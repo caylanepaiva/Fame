@@ -176,7 +176,10 @@ FMImporter >> fromString: aString [
 
 { #category : 'testing' }
 FMImporter >> hasSerial: serial [
-serialDict ifNil: [^ false] .
+
+	"to remove ??
+	serialDict ifNil: [ ^ false ]."
+
 	^ serialDict includesKey: serial
 ]
 
