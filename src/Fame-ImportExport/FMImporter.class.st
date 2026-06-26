@@ -98,6 +98,23 @@ FMImporter >> beginEntity: name [
 	stack push: (FMFutureEntity in: self named: translatedName)
 ]
 
+{ #category : 'as yet unclassified' }
+FMImporter >> beginExistingEntity: name serial: serial [
+
+    | translatedName element future |
+
+    translatedName := self translationUnit translate: name.
+    element := self elementAtSerial: serial.
+
+    future := FMFutureEntity new
+        in: self
+        named: translatedName
+        existingInstance: element;
+        yourself.
+
+    stack push: future
+]
+
 { #category : 'parsing' }
 FMImporter >> beginProperty: name [
 	self currentEntity beginProperty: name
@@ -113,6 +130,11 @@ FMImporter >> dangling: reference to: serial [
 	(reminderDict at: serial ifAbsentPut: [ OrderedCollection new ]) add: reference.
 	numberOfDanglingReferences := numberOfDanglingReferences + 1.
 	^ reference
+]
+
+{ #category : 'testing' }
+FMImporter >> elementAtSerial: serial [
+    ^ serialDict at: serial
 ]
 
 { #category : 'parsing' }
@@ -132,6 +154,11 @@ FMImporter >> endEntity: name [
 	stack ifNotEmpty: [ self currentEntity addToPropertyValues: entity ]
 ]
 
+{ #category : 'as yet unclassified' }
+FMImporter >> endExistingEntity: name [
+    stack pop
+]
+
 { #category : 'parsing' }
 FMImporter >> endProperty: name [
 	self currentEntity endProperty
@@ -145,6 +172,12 @@ FMImporter >> entityAt: aSerial ifAbsent: aBlock [
 { #category : 'accessing' }
 FMImporter >> fromString: aString [
 	self stream: aString readStream
+]
+
+{ #category : 'testing' }
+FMImporter >> hasSerial: serial [
+serialDict ifNil: [^ false] .
+	^ serialDict includesKey: serial
 ]
 
 { #category : 'initialization' }

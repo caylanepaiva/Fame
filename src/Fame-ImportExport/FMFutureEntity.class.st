@@ -57,6 +57,12 @@ FMFutureEntity >> importer [
 	^ importer
 ]
 
+{ #category : 'accessing' }
+FMFutureEntity >> importer: anObject [
+
+	importer := anObject
+]
+
 { #category : 'initialization' }
 FMFutureEntity >> in: anImporter named: aString [
 	importer := anImporter.
@@ -64,7 +70,21 @@ FMFutureEntity >> in: anImporter named: aString [
 	instance := metaDescription createInstance
 ]
 
+{ #category : 'initialization' }
+FMFutureEntity >> in: anImporter named: aString existingInstance: anEntity [
+
+	importer := anImporter.
+	metaDescription := importer metamodel elementNamed: aString.
+	instance := anEntity 
+]
+
 { #category : 'accessing' }
 FMFutureEntity >> instance [
 	^ instance
+]
+
+{ #category : 'accessing' }
+FMFutureEntity >> instance: anObject [
+
+	instance := anObject
 ]
