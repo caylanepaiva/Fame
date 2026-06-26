@@ -63,7 +63,7 @@ FMModelExporter >> export: aCollectionOfElements [
 	"implementacao antiga "
 
 	| elementsWithRelations |
-1halt.
+
 	elementsWithRelations := aCollectionOfElements select: [ :each |
 		                         self hasRelationsToExport: each ].
 
