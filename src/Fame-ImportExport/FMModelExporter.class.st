@@ -53,23 +53,41 @@ Class {
 	#tag : 'Exporters'
 }
 
-{ #category : 'exporting' }
+{ #category : 'api' }
 FMModelExporter >> export: aCollectionOfElements [
-	printer inDocumentDo: [ 
+	"printer inDocumentDo: [ 
 		aCollectionOfElements
 			do: [ :each | self exportEntity: each ]
-			separatedBy: [ printer printEntitySeparator ] ]
+			separatedBy: [ printer printEntitySeparator ] ] "
+
+	"implementacao antiga "
+
+	| elementsWithRelations |
+1halt.
+	elementsWithRelations := aCollectionOfElements select: [ :each |
+		                         self hasRelationsToExport: each ].
+
+	printer inDocumentDo: [
+			aCollectionOfElements
+				do: [ :each | self exportEntityNouveau: each ]
+				separatedBy: [ printer printEntitySeparator ].
+
+			elementsWithRelations ifNotEmpty: [
+					printer printEntitySeparator.
+
+					elementsWithRelations
+						do: [ :each | self exportRelationsOf: each ]
+						separatedBy: [ printer printEntitySeparator ] ] ]
 ]
 
 { #category : 'exporting' }
 FMModelExporter >> exportEntity: each [
-
 	| meta |
 	meta := model metaDescriptionOf: each.
 	printer inEntity: meta fullName do: [
 		| sortedProperties |
 		printer serial: (self indexOf: each).
-		sortedProperties := (self sortedPropertiesOf: meta) select: [
+		sortedProperties := (self sortedPropertiesOf: meta) select: [ 
 			                    :property |
 			                    self shouldExportProperty: property for: each ].
 		sortedProperties ifNotEmpty: [ printer printPropertySeparator ].
@@ -77,6 +95,45 @@ FMModelExporter >> exportEntity: each [
 			do: [ :property | self exportProperty: property for: each ]
 			separatedBy: [ printer printPropertySeparator ] ].
 	self incrementProgressBar
+]
+
+{ #category : 'exporting' }
+FMModelExporter >> exportEntityNouveau: each [
+	| meta |
+	meta := model metaDescriptionOf: each.
+	printer inEntity: meta fullName do: [
+		| sortedProperties |
+		printer serial: (self indexOf: each).
+		sortedProperties := (self sortedPropertiesOf: meta) select: [ 
+			                    :property |
+			                    (self shouldExportProperty: property for: each) and: [ property type isPrimitive ]  ]. "et ici j'ai ajoute le and: [ property type isPrimitive ] "
+		sortedProperties ifNotEmpty: [ printer printPropertySeparator ].
+		sortedProperties
+			do: [ :property | self exportPrimitivePropertyNouveau: property for: each ] "je change exportEntity pour exportPrimitivePropertyNouveau:"
+			separatedBy: [ printer printPropertySeparator ] ].
+	self incrementProgressBar
+]
+
+{ #category : 'exporting' }
+FMModelExporter >> exportPrimitivePropertyNouveau: property for: each [
+
+	| values |
+
+	values := model get: property element: each.
+	self exportPrimitivePropertyNouveau: property withAll: values
+]
+
+{ #category : 'exporting' }
+FMModelExporter >> exportPrimitivePropertyNouveau: property withAll: values [
+
+	printer inProperty: property name do: [
+		property isMultivalued ifTrue: [ printer beginMultivalue: property ].
+		(values reject: [ :value | value asString = 'unavailable' "value = MooseUnavailableMetric" ])
+			do: [ :each |
+				property type isPrimitive
+					ifTrue: [ printer primitive: each ] ] "tirei o ifFalse"
+			separatedBy: [ printer printEntitySeparator ].
+		property isMultivalued ifTrue: [ printer endMultivalue: property ] ]
 ]
 
 { #category : 'exporting' }
@@ -88,7 +145,6 @@ FMModelExporter >> exportProperty: property for: each [
 
 { #category : 'exporting' }
 FMModelExporter >> exportProperty: property withAll: values [
-
 	printer inProperty: property name do: [
 		property isMultivalued ifTrue: [ printer beginMultivalue: property ].
 		(values reject: [ :value | value asString = 'unavailable' "value = MooseUnavailableMetric" ])
@@ -104,6 +160,76 @@ FMModelExporter >> exportProperty: property withAll: values [
 									ifFalse: [ printer referenceNumber: (self indexOf: each) ] ] ] ]
 			separatedBy: [ printer printEntitySeparator ].
 		property isMultivalued ifTrue: [ printer endMultivalue: property ] ]
+]
+
+{ #category : 'exporting' }
+FMModelExporter >> exportRelationProperty: property for: each [ 
+
+    | values |
+    values := model get: property element: each.
+
+    self exportRelationProperty: property withAll: values
+]
+
+{ #category : 'exporting' }
+FMModelExporter >> exportRelationProperty: property withAll: values [
+
+    printer inProperty: property name do: [
+
+        property isMultivalued ifTrue: [ 
+            printer beginMultivalue: property 
+        ].
+
+        (values reject: [ :value | value asString = 'unavailable' ])
+            do: [ :value |
+
+                (FM3Constant constants includes: value)
+                    ifTrue: [ printer referenceName: value name ]
+                    ifFalse: [ printer referenceNumber: (self indexOf: value) ]
+
+            ]
+            separatedBy: [ printer printPropertySeparator ].
+
+        property isMultivalued ifTrue: [ 
+            printer endMultivalue: property 
+        ]
+    ]
+]
+
+{ #category : 'exporting' }
+FMModelExporter >> exportRelationsOf: each [
+
+    | meta sortedProperties |
+    meta := model metaDescriptionOf: each. "each eh a classe"
+
+    sortedProperties := (self sortedPropertiesOf: meta) select: [ :property |
+        (self shouldExportProperty: property for: each)
+            and: [ property type isPrimitive not ] ].
+
+    sortedProperties ifEmpty: [ ^ self ].
+
+    printer inEntity: meta fullName do: [
+        printer serial: (self indexOf: each).
+        printer printPropertySeparator.
+
+        sortedProperties
+            do: [ :property | self exportRelationProperty: property for: each ]
+            separatedBy: [ printer printPropertySeparator ] ].
+
+    self incrementProgressBar
+]
+
+{ #category : 'testing' }
+FMModelExporter >> hasRelationsToExport: each [
+
+    | meta sortedProperties |
+    meta := model metaDescriptionOf: each.
+
+    sortedProperties := (self sortedPropertiesOf: meta) select: [ :property |
+        (self shouldExportProperty: property for: each)
+            and: [ property type isPrimitive not ] ].
+
+    ^ sortedProperties isNotEmpty
 ]
 
 { #category : 'exporting' }
