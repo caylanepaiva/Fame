@@ -91,6 +91,11 @@ FMJSONPrinter >> printPropertySeparator [
 	stream nextPut: $,
 ]
 
+{ #category : 'printing' }
+FMJSONPrinter >> printRelationSeparator [ " a mudar implementacao "
+	stream nextPut: $,
+]
+
 { #category : 'parsing' }
 FMJSONPrinter >> referenceName: name [
 	stream
