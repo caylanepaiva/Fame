@@ -54,30 +54,12 @@ Class {
 }
 
 { #category : 'api' }
-FMModelExporter >> export: aCollectionOfElements [
-	"printer inDocumentDo: [ 
+FMModelExporter >> export: aCollectionOfElements [ [
+	printer inDocumentDo: [ 
 		aCollectionOfElements
 			do: [ :each | self exportEntity: each ]
-			separatedBy: [ printer printEntitySeparator ] ] "
-
-	"implementacao antiga "
-
-	| elementsWithRelations |
-
-	elementsWithRelations := aCollectionOfElements select: [ :each |
-		                         self hasRelationsToExport: each ].
-
-	printer inDocumentDo: [
-			aCollectionOfElements
-				do: [ :each | self exportEntityNouveau: each ]
-				separatedBy: [ printer printEntitySeparator ].
-
-			elementsWithRelations ifNotEmpty: [
-					printer printEntitySeparator.
-
-					elementsWithRelations
-						do: [ :each | self exportRelationsOf: each ]
-						separatedBy: [ printer printEntitySeparator ] ] ]
+			separatedBy: [ printer printEntitySeparator ] ]
+			]
 ]
 
 { #category : 'exporting' }
@@ -219,6 +201,31 @@ FMModelExporter >> exportRelationsOf: each [
     self incrementProgressBar
 ]
 
+{ #category : 'api' }
+FMModelExporter >> exportSepareted: aCollectionOfElements [
+
+	| elementsWithRelations |
+	elementsWithRelations := aCollectionOfElements select: [ :each |
+		                         self hasRelationsToExport: each ].
+
+	printer inDocumentDo: [
+			printer beginEntities.
+			aCollectionOfElements
+				do: [ :each | self exportEntityNouveau: each ]
+				separatedBy: [ printer printEntitySeparator ].
+			printer endEntities.
+
+			printer printSeparator.
+
+			printer beginRelations.
+			elementsWithRelations ifNotEmpty: [
+					elementsWithRelations
+						do: [ :each | self exportRelationsOf: each ]
+						separatedBy: [ printer printRelationSeparator ] ].
+			printer endRelations		
+					]
+]
+
 { #category : 'testing' }
 FMModelExporter >> hasRelationsToExport: each [
 
@@ -283,6 +290,22 @@ FMModelExporter >> run [
 			progressBar := bar.
 			lastUpdate := 0.
 			self export: roots ]
+]
+
+{ #category : 'exporting' }
+FMModelExporter >> runSepareted [
+
+	| roots |
+	roots := self roots.
+	numberOfExportedElements := 0.
+	UIManager default
+		displayProgress: 'Writing ' , printer stream localName
+		from: 0
+		to: roots size
+		during: [ :bar |
+				progressBar := bar.
+				lastUpdate := 0.
+				self exportSepareted: roots ]
 ]
 
 { #category : 'exporting' }

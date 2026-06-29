@@ -26,6 +26,15 @@ FMModel >> exportOn: aStream [
 ]
 
 { #category : '*Fame-ImportExport' }
+FMModel >> exportSeparetedWithPrinter: aParseClient [
+
+	FMModelExporter new
+		model: self;
+		printer: aParseClient;
+		runSepareted 
+]
+
+{ #category : '*Fame-ImportExport' }
 FMModel >> exportString [
 
 	self
@@ -45,7 +54,6 @@ FMModel >> exportToMSEStream: aStream [
 
 { #category : '*Fame-ImportExport' }
 FMModel >> exportWithPrinter: aParseClient [
-
 	FMModelExporter new
 		model: self;
 		printer: aParseClient;
