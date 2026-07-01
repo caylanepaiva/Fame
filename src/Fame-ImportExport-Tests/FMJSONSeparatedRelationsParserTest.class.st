@@ -42,7 +42,7 @@ FMJSONSeparatedRelationsParserTest >> setUp [
 		yourself.
 	fmmodel := FMModel withMetamodel: famixModel metamodel.
 	importer := (FMImporter model: fmmodel)
-		parser: FMJSONSeparatedRelationsParser;
+		parser: FMJSONSeparatedRelationsParserToexclude;
 		beginDocument ;
 		yourself
 ]

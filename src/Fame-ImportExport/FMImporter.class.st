@@ -134,7 +134,10 @@ FMImporter >> dangling: reference to: serial [
 
 { #category : 'testing' }
 FMImporter >> elementAtSerial: serial [
-    ^ serialDict at: serial
+
+    ^ serialDict
+        at: serial
+        ifAbsent: [ self error: 'No entity found for serial ', serial asString ]
 ]
 
 { #category : 'parsing' }
