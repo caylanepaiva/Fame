@@ -9,11 +9,41 @@ Class {
 	#tag : 'Traits'
 }
 
-{ #category : 'tokens' }
-FMJSONSeparatedRelationsDirectParser >> DirectRelationPropertyOf: anEntity [
-    "Reads one relation property such as: ""parentType"": {""ref"": 32}"
+{ #category : 'as yet unclassified' }
+FMJSONSeparatedRelationsDirectParser >> DirectMultiRelationValueOf: anEntity named: propertyName [
 
-    | pos propertyName targetSerial targetEntity |
+    | pos targetSerial targetEntity |
+
+    pos := self position.
+
+    self tMultiOPEN ifFalse: [ ^ self backtrack: pos ].
+
+    [
+        targetSerial := self referenceSerialValue.
+        targetSerial
+            ifNil: [ false ]
+            ifNotNil: [
+                targetEntity := importer elementAtSerial: targetSerial.
+
+                self
+                    setRelationNamed: propertyName
+                    of: anEntity
+                    to: targetEntity.
+
+                self tPropertySeparator ]
+    ] whileTrue.
+
+    self tMultiCLOSE ifFalse: [ ^ self syntaxError ].
+
+    self tWHITESPACE.
+    ^ true
+]
+
+{ #category : 'as yet unclassified' }
+FMJSONSeparatedRelationsDirectParser >> DirectRelationPropertyOf: anEntity [
+    "Reads one relation property and applies it directly."
+
+    | pos propertyName |
 
     pos := self position.
 
@@ -22,8 +52,29 @@ FMJSONSeparatedRelationsDirectParser >> DirectRelationPropertyOf: anEntity [
 
     self tPropertyNameSeparator ifFalse: [ ^ self backtrack: pos ].
 
+    (self DirectRelationValueOf: anEntity named: propertyName)
+        ifFalse: [ ^ self backtrack: pos ].
+
+    self tWHITESPACE.
+    self tPropertySeparator.
+
+    ^ true
+]
+
+{ #category : 'as yet unclassified' }
+FMJSONSeparatedRelationsDirectParser >> DirectRelationValueOf: anEntity named: propertyName [
+
+    ^ (self DirectSingleRelationValueOf: anEntity named: propertyName)
+        or: [ self DirectMultiRelationValueOf: anEntity named: propertyName ]
+]
+
+{ #category : 'as yet unclassified' }
+FMJSONSeparatedRelationsDirectParser >> DirectSingleRelationValueOf: anEntity named: propertyName [
+
+    | targetSerial targetEntity |
+
     targetSerial := self referenceSerialValue.
-    targetSerial ifNil: [ ^ self backtrack: pos ].
+    targetSerial ifNil: [ ^ false ].
 
     targetEntity := importer elementAtSerial: targetSerial.
 
@@ -31,9 +82,6 @@ FMJSONSeparatedRelationsDirectParser >> DirectRelationPropertyOf: anEntity [
         setRelationNamed: propertyName
         of: anEntity
         to: targetEntity.
-
-    self tWHITESPACE.
-    self tPropertySeparator.
 
     ^ true
 ]
@@ -109,35 +157,41 @@ FMJSONSeparatedRelationsDirectParser >> RelationCollection [
 ]
 
 { #category : 'tokens' }
-FMJSONSeparatedRelationsDirectParser >> RelationEntity [ 
+FMJSONSeparatedRelationsDirectParser >> RelationEntity [
+    "Reads one relation object and applies its relations directly, without FMFutureEntity."
 
-	| pos name serial entity| 
-	pos:= self position.
-	
-	self tOPEN ifFalse: [ ^ self backtrack: pos ].
-	
-	name := self tFULLNAME.
-	name ifNil: [ ^ self backtrack: pos ].
+    | pos name serial entity |
 
-	self tPropertySeparator.
-	
-	serial := self serialValue.
-	serial ifNil: [ ^ self syntaxError ].
+    pos := self position.
 
-	self tPropertySeparator.
-	
-	entity:= importer elementAtSerial: serial.
-	
-	[ self DirectRelationPropertyOf: entity  ] whileTrue.
+    self tOPEN ifFalse: [ ^ self backtrack: pos ].
 
-	self tCLOSE ifFalse: [ ^ self syntaxError ].
-	
+    name := self tFULLNAME.
+    name ifNil: [ ^ self backtrack: pos ].
 
-	self tWHITESPACE.
-	^ true
-	
+    self tPropertySeparator.
 
-	
+    serial := self serialValue.
+    serial ifNil: [ ^ self syntaxError ].
+
+    self tPropertySeparator.
+
+    (importer hasSerial: serial)
+        ifFalse: [
+            self error:
+                'Missing SOURCE serial ',
+                serial asString,
+                ' for relation entity ',
+                name ].
+
+    entity := importer elementAtSerial: serial.
+
+    [ self DirectRelationPropertyOf: entity ] whileTrue.
+
+    self tCLOSE ifFalse: [ ^ self syntaxError ].
+
+    self tWHITESPACE.
+    ^ true
 ]
 
 { #category : 'tokens' }
@@ -190,18 +244,26 @@ FMJSONSeparatedRelationsDirectParser >> referenceSerialValue [
 
     position := self position.
 
-    self tOPEN ifFalse: [ ^ self backtrack: position ].
+    self tOPEN ifFalse: [
+        self backtrack: position.
+        ^ nil ].
 
-    (self matchesWord: '"ref"')
-        ifFalse: [ ^ self backtrack: position ].
+    (self matchesWord: '"ref"') ifFalse: [
+        self backtrack: position.
+        ^ nil ].
 
-    self tPropertyNameSeparator
-        ifFalse: [ ^ self backtrack: position ].
+    self tPropertyNameSeparator ifFalse: [
+        self backtrack: position.
+        ^ nil ].
 
     serial := self numberValue.
-    serial ifNil: [ ^ self backtrack: position ].
+    serial ifNil: [
+        self backtrack: position.
+        ^ nil ].
 
-    self tCLOSE ifFalse: [ ^ self backtrack: position ].
+    self tCLOSE ifFalse: [
+        self backtrack: position.
+        ^ nil ].
 
     self tWHITESPACE.
     ^ serial
@@ -224,11 +286,20 @@ FMJSONSeparatedRelationsDirectParser >> serialValue [
     ^ serial
 ]
 
-{ #category : 'tokens' }
+{ #category : 'as yet unclassified' }
 FMJSONSeparatedRelationsDirectParser >> setRelationNamed: propertyName of: sourceEntity to: targetEntity [
     "Sets a relation directly without FMFutureEntity/FMFutureProperty."
 
-    | setter getter currentValue |
+    | getter setter currentValue |
+
+    getter := propertyName asSymbol.
+
+    (sourceEntity respondsTo: getter)
+        ifTrue: [
+            currentValue := sourceEntity perform: getter.
+
+            (currentValue respondsTo: #add:)
+                ifTrue: [ ^ currentValue add: targetEntity ] ].
 
     setter := (propertyName , ':') asSymbol.
 
@@ -238,24 +309,9 @@ FMJSONSeparatedRelationsDirectParser >> setRelationNamed: propertyName of: sourc
                 perform: setter
                 with: targetEntity ].
 
-    getter := propertyName asSymbol.
-
-    (sourceEntity respondsTo: getter)
-        ifFalse: [
-            self error:
-                'Cannot set relation ',
-                propertyName,
-                ' on ',
-                sourceEntity class name ].
-
-    currentValue := sourceEntity perform: getter.
-
-    (currentValue respondsTo: #add:)
-        ifTrue: [ ^ currentValue add: targetEntity ].
-
     self error:
-        'Relation ',
+        'Cannot set relation ',
         propertyName,
-        ' exists but is not settable on ',
+        ' on ',
         sourceEntity class name
 ]
