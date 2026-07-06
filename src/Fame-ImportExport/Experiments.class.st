@@ -31,6 +31,43 @@ Experiments class >> experimentImport: fileInput to: fileOutput for: numberRepet
 ]
 
 { #category : 'writing' }
+Experiments >> averageResultRow [
+
+	^ {
+		DateAndTime now printString.
+		experimentId.
+		input basenameWithoutExtension.
+		language.
+		format.
+		'average import'.
+		'average'.
+		self averageTimeMs.
+		''.
+		''.
+		''.
+		[ input size ] on: Error do: [ :e | '' ].
+		input fullName.
+		computer.
+		os.
+		powerMode.
+		charging.
+		notes
+	}
+]
+
+{ #category : 'writing' }
+Experiments >> averageTimeMs [
+
+	| times |
+
+	times := results collect: [ :row | row at: 8 ].
+
+	times ifEmpty: [ ^ 0 ].
+
+	^ times sum / times size
+]
+
+{ #category : 'writing' }
 Experiments >> csvEscape: value [
 
 	| text |
@@ -118,20 +155,24 @@ Experiments >> repetitions: anInteger [
 ]
 
 { #category : 'accessing' }
-Experiments >> run [ output parent ensureCreateDirectory.
-experimentId := DateAndTime now printString.
+Experiments >> run [
 
-1 to: repetitions do: [ :runNumber |
-self runOneImportExperiment: runNumber ].
+	output parent ensureCreateDirectory.
+	experimentId := DateAndTime now printString.
 
-self writeResultsToCsv.
+	1 to: repetitions do: [ :runNumber |
+	self runOneImportExperiment: runNumber ].
 
-^ {
-	  ('csv_file' -> output fullName).
-	  ('new_results' -> results) }
+	self writeResultsToCsv.
+
+	^ {
+		  ('csv_file' -> output fullName).
+		  ('new_results' -> results).
+		  ('average_time_ms' -> self averageTimeMs)
+		 }
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'writing' }
 Experiments >> runOneImportExperiment: runNumber [
 	| model time fileSize entityCount classCount methodCount |
 
@@ -201,6 +242,8 @@ Experiments >> writeResultsToCsv [
 
 			results do: [ :row |
 			self writeCsvRow: row on: stream
-		]
+		].
+
+		self writeCsvRow: self averageResultRow on: stream
 	].
 ]
