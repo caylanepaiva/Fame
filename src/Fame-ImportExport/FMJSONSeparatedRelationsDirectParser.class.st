@@ -9,7 +9,7 @@ Class {
 	#tag : 'Traits'
 }
 
-{ #category : 'as yet unclassified' }
+{ #category : 'tokens' }
 FMJSONSeparatedRelationsDirectParser >> DirectMultiRelationValueOf: anEntity named: propertyName [
 
     | pos targetSerial targetEntity |
@@ -39,7 +39,7 @@ FMJSONSeparatedRelationsDirectParser >> DirectMultiRelationValueOf: anEntity nam
     ^ true
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'tokens' }
 FMJSONSeparatedRelationsDirectParser >> DirectRelationPropertyOf: anEntity [
     "Reads one relation property and applies it directly."
 
@@ -61,14 +61,14 @@ FMJSONSeparatedRelationsDirectParser >> DirectRelationPropertyOf: anEntity [
     ^ true
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'tokens' }
 FMJSONSeparatedRelationsDirectParser >> DirectRelationValueOf: anEntity named: propertyName [
 
     ^ (self DirectSingleRelationValueOf: anEntity named: propertyName)
         or: [ self DirectMultiRelationValueOf: anEntity named: propertyName ]
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'tokens' }
 FMJSONSeparatedRelationsDirectParser >> DirectSingleRelationValueOf: anEntity named: propertyName [
 
     | targetSerial targetEntity |
@@ -158,40 +158,36 @@ FMJSONSeparatedRelationsDirectParser >> RelationCollection [
 
 { #category : 'tokens' }
 FMJSONSeparatedRelationsDirectParser >> RelationEntity [
-    "Reads one relation object and applies its relations directly, without FMFutureEntity."
+	"Reads one relation object and applies its relations"
 
-    | pos name serial entity |
+	| pos name serial entity |
+	pos := self position.
 
-    pos := self position.
+	self tOPEN ifFalse: [ ^ self backtrack: pos ].
 
-    self tOPEN ifFalse: [ ^ self backtrack: pos ].
+	name := self tFULLNAME.
+	name ifNil: [ ^ self backtrack: pos ].
 
-    name := self tFULLNAME.
-    name ifNil: [ ^ self backtrack: pos ].
+	self tPropertySeparator.
 
-    self tPropertySeparator.
+	serial := self serialValue.
+	serial ifNil: [ ^ self syntaxError ].
 
-    serial := self serialValue.
-    serial ifNil: [ ^ self syntaxError ].
+	self tPropertySeparator.
 
-    self tPropertySeparator.
+	"(importer hasSerial: serial) ifFalse: [
+			self error:
+				'Missing SOURCE serial ' , serial asString
+				, ' for relation entity ' , name ]."
 
-    (importer hasSerial: serial)
-        ifFalse: [
-            self error:
-                'Missing SOURCE serial ',
-                serial asString,
-                ' for relation entity ',
-                name ].
+	entity := importer elementAtSerial: serial.
 
-    entity := importer elementAtSerial: serial.
+	[ self DirectRelationPropertyOf: entity ] whileTrue.
 
-    [ self DirectRelationPropertyOf: entity ] whileTrue.
+	self tCLOSE ifFalse: [ ^ self syntaxError ].
 
-    self tCLOSE ifFalse: [ ^ self syntaxError ].
-
-    self tWHITESPACE.
-    ^ true
+	self tWHITESPACE.
+	^ true
 ]
 
 { #category : 'tokens' }
@@ -286,7 +282,7 @@ FMJSONSeparatedRelationsDirectParser >> serialValue [
     ^ serial
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'tokens' }
 FMJSONSeparatedRelationsDirectParser >> setRelationNamed: propertyName of: sourceEntity to: targetEntity [
     "Sets a relation directly without FMFutureEntity/FMFutureProperty."
 
