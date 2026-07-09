@@ -27,6 +27,11 @@ FMJSONSeparatedCompactPrinter >> beginProperty: name [
 ]
 
 { #category : 'private' }
+FMJSONSeparatedCompactPrinter >> beginRelationEntity [
+	stream nextPut: ${
+]
+
+{ #category : 'private' }
 FMJSONSeparatedCompactPrinter >> crTabs [
     "Compact JSON: no line breaks, no tabs."
 
@@ -49,6 +54,11 @@ FMJSONSeparatedCompactPrinter >> endEntities [
 FMJSONSeparatedCompactPrinter >> endEntity: name [
 
     stream nextPut: $}
+]
+
+{ #category : 'private' }
+FMJSONSeparatedCompactPrinter >> endRelationEntity [
+	stream nextPut: $}
 ]
 
 { #category : 'private' }

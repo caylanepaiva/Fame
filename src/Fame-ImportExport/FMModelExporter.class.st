@@ -180,50 +180,59 @@ FMModelExporter >> exportRelationProperty: property withAll: values [
 
 { #category : 'exporting' }
 FMModelExporter >> exportRelationsOf: each [
+	| meta relationProperties |
 
-    | meta sortedProperties |
-    meta := model metaDescriptionOf: each. "each eh a classe"
+	meta := model metaDescriptionOf: each.
 
-    sortedProperties := (self sortedPropertiesOf: meta) select: [ :property |
-        (self shouldExportProperty: property for: each)
-            and: [ property type isPrimitive not ] ].
+	relationProperties := (self sortedPropertiesOf: meta)
+		select: [ :property |
+			(self shouldExportProperty: property for: each)
+				and: [ property type isPrimitive not ] ].
 
-    sortedProperties ifEmpty: [ ^ self ].
+	relationProperties ifEmpty: [ ^ self ].
 
-    printer inEntity: meta fullName do: [
-        printer serial: (self indexOf: each).
-        printer printPropertySeparator.
+	printer beginRelationEntity.
 
-        sortedProperties
-            do: [ :property | self exportRelationProperty: property for: each ]
-            separatedBy: [ printer printPropertySeparator ] ].
+	printer serial: (self indexOf: each).
 
-    self incrementProgressBar
+	relationProperties ifNotEmpty: [
+		printer printPropertySeparator ].
+
+	relationProperties
+		do: [ :property |
+			self exportProperty: property for: each ]
+		separatedBy: [
+			printer printPropertySeparator ].
+
+	printer endRelationEntity
 ]
 
 { #category : 'api' }
 FMModelExporter >> exportSepareted: aCollectionOfElements [
-
 	| elementsWithRelations |
+
 	elementsWithRelations := aCollectionOfElements select: [ :each |
-		                         self hasRelationsToExport: each ].
+		self hasRelationsToExport: each ].
 
 	printer inDocumentDo: [
-			printer beginEntities.
-			aCollectionOfElements
-				do: [ :each | self exportEntityNouveau: each ]
-				separatedBy: [ printer printEntitySeparator ].
-			printer endEntities.
+		printer beginEntities.
 
-			printer printSeparator.
+		aCollectionOfElements
+			do: [ :each | self exportEntityNouveau: each ]
+			separatedBy: [ printer printEntitySeparator ].
 
-			printer beginRelations.
-			elementsWithRelations ifNotEmpty: [
-					elementsWithRelations
-						do: [ :each | self exportRelationsOf: each ]
-						separatedBy: [ printer printRelationSeparator ] ].
-			printer endRelations		
-					]
+		printer endEntities.
+
+		printer printSeparator.
+
+		printer beginRelations.
+
+		elementsWithRelations
+			do: [ :each | self exportRelationsOf: each ]
+			separatedBy: [ printer printRelationSeparator ].
+
+		printer endRelations
+	]
 ]
 
 { #category : 'testing' }

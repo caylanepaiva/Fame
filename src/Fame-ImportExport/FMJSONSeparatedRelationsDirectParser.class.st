@@ -88,14 +88,27 @@ FMJSONSeparatedRelationsDirectParser >> DirectSingleRelationValueOf: anEntity na
 
 { #category : 'tokens' }
 FMJSONSeparatedRelationsDirectParser >> Document [
-	"Matches a separated relations JSON document: [ [entities], [relations] ]."
+	"Matches a separated JSON document."
 
 	self tWHITESPACE.
 
-	importer beginDocument.
-	self TwoPhaseMultiEntity.
-	importer endDocument.
+	self atEnd
+		ifTrue: [ importer beginDocument ]
+		ifFalse: [
+			importer beginDocument.
 
+			self tMultiOPEN ifFalse: [ ^ self syntaxError ].
+
+			self EntityDefinitionCollection ifFalse: [ ^ self syntaxError ].
+
+			self tPropertySeparator ifFalse: [ ^ self syntaxError ].
+
+			self RelationCollection ifFalse: [ ^ self syntaxError ].
+
+			self tMultiCLOSE ifFalse: [ ^ self syntaxError ]
+		].
+
+	importer endDocument.
 	self tWHITESPACE.
 	^ true
 ]
@@ -141,15 +154,37 @@ FMJSONSeparatedRelationsDirectParser >> EntityCollection [
 ]
 
 { #category : 'tokens' }
-FMJSONSeparatedRelationsDirectParser >> RelationCollection [
-	"Reads the second inner array: relation objects for existing entities."
+FMJSONSeparatedRelationsDirectParser >> EntityDefinitionCollection [
+	"Reads the first inner array: entities with FM3."
 
 	self tMultiOPEN ifFalse: [ ^ self syntaxError ].
 
 	[
-		self RelationEntity and: [
+		self Entity
+			ifTrue: [
 				self incrementProgressBar.
-				self tPropertySeparator ] ] whileTrue.
+				self tPropertySeparator ]
+			ifFalse: [ false ]
+	] whileTrue.
+
+	self tMultiCLOSE ifFalse: [ ^ self syntaxError ].
+
+	^ true
+]
+
+{ #category : 'tokens' }
+FMJSONSeparatedRelationsDirectParser >> RelationCollection [
+	"Reads the second inner array: relations without FM3."
+
+	self tMultiOPEN ifFalse: [ ^ self syntaxError ].
+
+	[
+		self RelationEntity
+			ifTrue: [
+				self incrementProgressBar.
+				self tPropertySeparator ]
+			ifFalse: [ false ]
+	] whileTrue.
 
 	self tMultiCLOSE ifFalse: [ ^ self syntaxError ].
 
@@ -158,35 +193,26 @@ FMJSONSeparatedRelationsDirectParser >> RelationCollection [
 
 { #category : 'tokens' }
 FMJSONSeparatedRelationsDirectParser >> RelationEntity [
-	"Reads one relation object and applies its relations"
+	"Reads one relation object without FM3 and applies its relations"
 
-	| pos name serial entity |
+	| pos serial entity |
 	pos := self position.
 
 	self tOPEN ifFalse: [ ^ self backtrack: pos ].
 
-	name := self tFULLNAME.
-	name ifNil: [ ^ self backtrack: pos ].
-
-	self tPropertySeparator.
-
 	serial := self serialValue.
 	serial ifNil: [ ^ self syntaxError ].
 
-	self tPropertySeparator.
-
-	"(importer hasSerial: serial) ifFalse: [
-			self error:
-				'Missing SOURCE serial ' , serial asString
-				, ' for relation entity ' , name ]."
-
 	entity := importer elementAtSerial: serial.
+
+	self tPropertySeparator.
 
 	[ self DirectRelationPropertyOf: entity ] whileTrue.
 
 	self tCLOSE ifFalse: [ ^ self syntaxError ].
 
 	self tWHITESPACE.
+
 	^ true
 ]
 
