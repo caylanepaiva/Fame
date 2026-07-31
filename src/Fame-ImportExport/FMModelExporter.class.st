@@ -180,14 +180,18 @@ FMModelExporter >> exportRelationProperty: property withAll: values [
 
 { #category : 'exporting' }
 FMModelExporter >> exportRelationsOf: each [
+
 	| meta relationProperties |
 
 	meta := model metaDescriptionOf: each.
 
-	relationProperties := (self sortedPropertiesOf: meta)
-		select: [ :property |
-			(self shouldExportProperty: property for: each)
-				and: [ property type isPrimitive not ] ].
+	relationProperties := (self sortedPropertiesOf: meta) select: [
+		:property |
+		(self
+			shouldExportProperty: property
+			for: each)
+			and: [ property type isPrimitive not ]
+	].
 
 	relationProperties ifEmpty: [ ^ self ].
 
@@ -196,13 +200,15 @@ FMModelExporter >> exportRelationsOf: each [
 	printer serial: (self indexOf: each).
 
 	relationProperties ifNotEmpty: [
-		printer printPropertySeparator ].
+		printer printPropertySeparator
+	].
 
 	relationProperties
 		do: [ :property |
-			self exportProperty: property for: each ]
+			self exportRelationProperty: property for: each ]
 		separatedBy: [
-			printer printPropertySeparator ].
+			printer printPropertySeparator
+		].
 
 	printer endRelationEntity
 ]
@@ -319,18 +325,23 @@ FMModelExporter >> runSepareted [
 
 { #category : 'exporting' }
 FMModelExporter >> shouldExportProperty: property for: each [
+
 	| values |
 	(self shouldIgnoreProperty: property) ifTrue: [ ^ false ].
 	values := model get: property element: each.
 
-	"Do not export empty properties."
 	values isEmptyOrNil ifTrue: [ ^ false ].
 	^ true
 ]
 
 { #category : 'exporting' }
 FMModelExporter >> shouldIgnoreProperty: property [
+
 	(model metamodel includes: property) ifFalse: [ ^ true ].
+
+	property name = #attributes ifTrue: [ ^ false ].
+
+	property name = #parentAnnotationInstance ifTrue: [ ^ true ].
 
 	^ property isDerived
 ]

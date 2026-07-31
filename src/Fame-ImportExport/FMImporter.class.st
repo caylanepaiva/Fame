@@ -120,6 +120,25 @@ FMImporter >> beginProperty: name [
 	self currentEntity beginProperty: name
 ]
 
+{ #category : 'parsing' }
+FMImporter >> createDirectEntityNamed: name serial: serial [
+
+	| translatedName metaDescription entity |
+
+	translatedName := self translationUnit translate: name.
+
+	metaDescription := self metamodel
+		elementNamed: translatedName.
+
+	entity := metaDescription createInstance.
+
+	self assign: entity to: serial.
+
+	entities add: entity.
+
+	^ entity
+]
+
 { #category : 'accessing' }
 FMImporter >> currentEntity [
 	^ stack top
@@ -243,6 +262,17 @@ FMImporter >> run [
 { #category : 'parsing' }
 FMImporter >> serial: serial [
 	self assign: self currentEntity instance to: serial
+]
+
+{ #category : 'parsing' }
+FMImporter >> setDirectPropertyNamed: propertyName
+	of: entity
+	values: values [
+
+	^ model
+		set: propertyName
+		element: entity
+		values: values
 ]
 
 { #category : 'accessing' }

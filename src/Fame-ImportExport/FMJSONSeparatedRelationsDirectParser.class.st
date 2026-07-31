@@ -40,6 +40,109 @@ FMJSONSeparatedRelationsDirectParser >> DirectMultiRelationValueOf: anEntity nam
 ]
 
 { #category : 'tokens' }
+FMJSONSeparatedRelationsDirectParser >> DirectPrimitivePropertyOf: anEntity [
+
+	| pos propertyName values |
+
+	pos := self position.
+
+	propertyName := self String.
+
+	propertyName ifNil: [
+		^ self backtrack: pos
+	].
+
+	self tPropertyNameSeparator ifFalse: [
+		^ self backtrack: pos
+	].
+
+	values := self DirectPrimitiveValues.
+
+	values ifNil: [
+		^ self backtrack: pos
+	].
+
+	importer
+		setDirectPropertyNamed: propertyName
+		of: anEntity
+		values: values.
+
+	self tWHITESPACE.
+
+	self tPropertySeparator.
+
+	^ true
+]
+
+{ #category : 'tokens' }
+FMJSONSeparatedRelationsDirectParser >> DirectPrimitiveValue [
+
+	| primitive |
+
+	primitive := self String.
+	primitive ifNotNil: [
+		^ primitive
+	].
+
+	primitive := self Number.
+	primitive ifNotNil: [
+		^ primitive
+	].
+
+	self tTRUE ifTrue: [
+		^ true
+	].
+
+	self tFALSE ifTrue: [
+		^ false
+	].
+
+	^ nil
+]
+
+{ #category : 'tokens' }
+FMJSONSeparatedRelationsDirectParser >> DirectPrimitiveValues [
+
+	| pos values value |
+
+	pos := self position.
+
+	self tMultiOPEN ifTrue: [
+
+		values := OrderedCollection new.
+
+		[
+			value := self DirectPrimitiveValue.
+
+			value
+				ifNil: [ false ]
+				ifNotNil: [
+					values add: value.
+					self tPropertySeparator
+				]
+		] whileTrue.
+
+		self tMultiCLOSE ifFalse: [
+			^ self syntaxError
+		].
+
+		self tWHITESPACE.
+
+		^ values
+	].
+
+	self backtrack: pos.
+
+	value := self DirectPrimitiveValue.
+
+	value ifNil: [
+		^ nil
+	].
+
+	^ OrderedCollection with: value
+]
+
+{ #category : 'tokens' }
 FMJSONSeparatedRelationsDirectParser >> DirectRelationPropertyOf: anEntity [
     "Reads one relation property and applies it directly."
 
@@ -115,25 +218,45 @@ FMJSONSeparatedRelationsDirectParser >> Document [
 
 { #category : 'tokens' }
 FMJSONSeparatedRelationsDirectParser >> Entity [
-	"Reads one entity from the first collection and creates a new instance."
 
-	| pos name |
+	| pos name serial entity |
+
 	pos := self position.
 
-	self tOPEN ifFalse: [ ^ self backtrack: pos ].
+	self tOPEN ifFalse: [
+		^ self backtrack: pos
+	].
 
 	name := self tFULLNAME.
-	name ifNil: [ ^ self backtrack: pos ].
+
+	name ifNil: [
+		^ self backtrack: pos
+	].
 
 	self tPropertySeparator.
 
-	importer inEntity: name do: [
-			self Serial.
-			self tPropertySeparator.
-			[ self Property ] whileTrue.
-			self tCLOSE ifFalse: [ ^ self syntaxError ] ].
+	serial := self serialValue.
+
+	serial ifNil: [
+		^ self syntaxError
+	].
+
+	entity := importer
+		createDirectEntityNamed: name
+		serial: serial.
+
+	self tPropertySeparator.
+
+	[
+		self DirectPrimitivePropertyOf: entity
+	] whileTrue.
+
+	self tCLOSE ifFalse: [
+		^ self syntaxError
+	].
 
 	self tWHITESPACE.
+
 	^ true
 ]
 

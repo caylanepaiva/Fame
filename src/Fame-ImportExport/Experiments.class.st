@@ -13,8 +13,10 @@ Class {
 		'powerMode',
 		'charging',
 		'notes',
+		'importSelector',
 		'experimentId',
-		'results'
+		'results',
+		'implementationName'
 	],
 	#category : 'Fame-ImportExport',
 	#package : 'Fame-ImportExport'
@@ -28,6 +30,22 @@ Experiments class >> experimentImport: fileInput to: fileOutput for: numberRepet
 		output: fileOutput;
 		repetitions: numberRepetitions;
 		run
+]
+
+{ #category : 'as yet unclassified' }
+Experiments class >> experimentImport: fileInput to: fileOutput for: numberOfRepetitions using: anImportSelector named: anImplementationName [
+
+	| experiment |
+	experiment := self new.
+
+	experiment
+		file: fileInput asFileReference;
+		output: fileOutput asFileReference;
+		repetitions: numberOfRepetitions;
+		importSelector: anImportSelector;
+		implementationName: anImplementationName.
+
+	^ experiment run
 ]
 
 { #category : 'writing' }
@@ -58,13 +76,15 @@ Experiments >> averageResultRow [
 { #category : 'writing' }
 Experiments >> averageTimeMs [
 
-	| times |
+	| times average |
 
 	times := results collect: [ :row | row at: 8 ].
 
-	times ifEmpty: [ ^ 0 ].
+	times ifEmpty: [ ^ 0.0 ].
 
-	^ times sum / times size
+	average := (times sum / times size) asFloat.
+
+	^ average roundTo: 0.01
 ]
 
 { #category : 'writing' }
@@ -117,20 +137,38 @@ Experiments >> format: aString [
 	^ self
 ]
 
+{ #category : 'accessing' }
+Experiments >> implementationName: aString [
+
+	implementationName := aString
+]
+
 { #category : 'setup' }
-Experiments >> importModel [ 
-	| model | 
-	    input readStreamDo: [ :stream |
-        model := FamixJavaModel new importFromJSONSeparetedStream: stream
-    ].
-   ^ model
+Experiments >> importModel [
+
+	| model |
+
+	input readStreamDo: [ :stream |
+		model := FamixJavaModel new
+			perform: importSelector
+			with: stream ].
+
+	^ model
+]
+
+{ #category : 'accessing' }
+Experiments >> importSelector: aSelector [
+
+	importSelector := aSelector
 ]
 
 { #category : 'initialization' }
 Experiments >> initialize [
 
 	super initialize.
-	results := OrderedCollection new
+	results := OrderedCollection new.
+	importSelector := #importFromJSONSeparetedStream:.
+	implementationName := 'separated-current'
 ]
 
 { #category : 'accessing' }
