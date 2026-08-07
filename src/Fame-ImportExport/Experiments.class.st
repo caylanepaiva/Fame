@@ -148,10 +148,21 @@ Experiments >> importModel [
 
 	| model |
 
-	input readStreamDo: [ :stream |
-		model := FamixJavaModel new
-			perform: importSelector
-			with: stream ].
+	importSelector = #importFromFuelStream:
+		ifTrue: [
+			input binaryReadStreamDo: [ :stream |
+				model := FamixJavaModel
+					perform: importSelector
+					with: stream
+			]
+		]
+		ifFalse: [
+			input readStreamDo: [ :stream |
+				model := FamixJavaModel new
+					perform: importSelector
+					with: stream
+			]
+		].
 
 	^ model
 ]
