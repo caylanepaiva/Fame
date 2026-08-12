@@ -31,17 +31,15 @@ FMMessagePackModelExporter >> messagePackBytes [
 { #category : 'exporting' }
 FMMessagePackModelExporter >> messagePackDocument [
 
-    | entities relations |
+	| entities relations |
+	entities := self messagePackEntities.
+	relations := self messagePackRelations.
 
-    entities := self messagePackEntities.
-    relations := self messagePackRelations.
-
-    ^ {
-        'format' -> 'moose-messagepack'.
-        'version' -> 1.
-        'entities' -> entities.
-        'relations' -> relations
-    } asDictionary
+	^ {
+		  ('format' -> 'moose-messagepack').
+		  ('version' -> 3).
+		  ('entities' -> entities).
+		  ('relations' -> relations) } asDictionary
 ]
 
 { #category : 'exporting' }
@@ -59,35 +57,21 @@ FMMessagePackModelExporter >> messagePackEntityFor: anEntity [
 	meta := anEntity metadescription.
 
 	^ {
-		  ('id' -> (self indexOf: anEntity)).
-		  ('type' -> meta fullName asString).
-		  ('attributes' -> (self primitiveAttributesOf: anEntity)) }
-		  asDictionary
+		  (self indexOf: anEntity).
+		  meta fullName asString.
+		  (self primitiveAttributesOf: anEntity) }
 ]
 
 { #category : 'exporting' }
 FMMessagePackModelExporter >> messagePackRelationFrom: source property: property target: target [
 
-    | relation |
-
-    relation := {
-        'source' -> (self indexOf: source).
-        'property' -> property name asString
-    } asDictionary.
-
-    (FM3Constant constants includes: target)
-        ifTrue: [
-            relation
-                at: 'targetName'
-                put: target name asString
-        ]
-        ifFalse: [
-            relation
-                at: 'target'
-                put: (self indexOf: target)
-        ].
-
-    ^ relation
+    ^ {
+        self indexOf: source.
+        property name asString.
+        (FM3Constant constants includes: target)
+            ifTrue: [ target name asString ]
+            ifFalse: [ self indexOf: target ]
+    }
 ]
 
 { #category : 'exporting' }

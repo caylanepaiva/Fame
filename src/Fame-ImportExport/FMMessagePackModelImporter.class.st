@@ -2,12 +2,39 @@ Class {
 	#name : 'FMMessagePackModelImporter',
 	#superclass : 'FMImporter',
 	#instVars : [
-		'document'
+		'document',
+		'propertyCache'
 	],
 	#category : 'Fame-ImportExport-Importers',
 	#package : 'Fame-ImportExport',
 	#tag : 'Importers'
 }
+
+{ #category : 'parsing' }
+FMMessagePackModelImporter >> beginDocument [
+
+    super beginDocument.
+
+    propertyCache := Dictionary new
+]
+
+{ #category : 'importing' }
+FMMessagePackModelImporter >> entityAttributesFrom: entityData [
+
+    ^ entityData third
+]
+
+{ #category : 'importing' }
+FMMessagePackModelImporter >> entityIdFrom: entityData [
+
+    ^ entityData first
+]
+
+{ #category : 'importing' }
+FMMessagePackModelImporter >> entityTypeFrom: entityData [
+
+    ^ entityData second
+]
 
 { #category : 'importing' }
 FMMessagePackModelImporter >> groupedRelations [
@@ -57,6 +84,26 @@ FMMessagePackModelImporter >> importFromStream: aStream [
 ]
 
 { #category : 'importing' }
+FMMessagePackModelImporter >> propertyNameFromRelation: relationData [
+
+    ^ relationData second
+]
+
+{ #category : 'importing' }
+FMMessagePackModelImporter >> propertyNamed: propertyName for: anEntity [
+
+	| propertiesForClass |
+	propertiesForClass := propertyCache
+		                      at: anEntity class
+		                      ifAbsentPut: [ Dictionary new ].
+
+	^ propertiesForClass
+		  at: propertyName
+		  ifAbsentPut: [
+		  anEntity metadescription propertyNamed: propertyName ]
+]
+
+{ #category : 'importing' }
 FMMessagePackModelImporter >> readDocumentFromFile: aFileReference [
 
     ^ aFileReference binaryReadStreamDo: [ :stream |
@@ -75,15 +122,20 @@ FMMessagePackModelImporter >> readDocumentFromStream: aStream [
 { #category : 'importing' }
 FMMessagePackModelImporter >> restoreAttributes: attributes into: anEntity [
 
-	| meta property |
-	meta := anEntity metadescription.
+    | property |
 
-	attributes keysAndValuesDo: [ :propertyName :value |
-			property := meta propertyNamed: propertyName.
+    attributes keysAndValuesDo: [ :propertyName :value |
 
-			anEntity mmSetProperty: property to: value ].
+        property := self
+            propertyNamed: propertyName
+            for: anEntity.
 
-	^ anEntity
+        anEntity
+            mmSetProperty: property
+            to: value
+    ].
+
+    ^ anEntity
 ]
 
 { #category : 'importing' }
@@ -100,11 +152,11 @@ FMMessagePackModelImporter >> restoreEntityFrom: entityData [
     | entity |
 
     entity := self
-        createDirectEntityNamed: (entityData at: 'type')
-        serial: (entityData at: 'id').
+        createDirectEntityNamed: (self entityTypeFrom: entityData)
+        serial: (self entityIdFrom: entityData).
 
     self
-        restoreAttributes: (entityData at: 'attributes')
+        restoreAttributes: (self entityAttributesFrom: entityData)
         into: entity.
 
     ^ entity
@@ -140,28 +192,42 @@ FMMessagePackModelImporter >> restoreRelationFrom: relationData [
 { #category : 'importing' }
 FMMessagePackModelImporter >> restoreRelationGroup: relationGroup [
 
-	| firstRelation source property targets |
-	firstRelation := relationGroup first.
+    | firstRelation source property targets |
 
-	source := self
-		          entityAt: (firstRelation at: 'source')
-		          ifAbsent: [ self error: 'Source entity not found' ].
+    firstRelation := relationGroup first.
 
-	property := source metadescription propertyNamed:
-		            (firstRelation at: 'property').
+    source := self
+        entityAt: (self sourceIdFromRelation: firstRelation)
+        ifAbsent: [
+            self error: 'Source entity not found'
+        ].
 
-	targets := relationGroup collect: [ :relationData |
-		           self targetForRelation: relationData ].
+    property := self
+        propertyNamed: (self propertyNameFromRelation: firstRelation)
+        for: source.
 
-	property isMultivalued
-		ifTrue: [ source mmSetProperty: property to: targets asArray ]
-		ifFalse: [
-				targets size = 1 ifFalse: [
-					self error: 'Single-valued relation has multiple targets' ].
+    targets := relationGroup collect: [ :relationData |
+        self targetForRelation: relationData
+    ].
 
-				source mmSetProperty: property to: targets first ].
+    property isMultivalued
+        ifTrue: [
+            source
+                mmSetProperty: property
+                to: targets asArray
+        ]
+        ifFalse: [
+            targets size = 1 ifFalse: [
+                self error:
+                    'Single-valued relation has multiple targets'
+            ].
 
-	^ source
+            source
+                mmSetProperty: property
+                to: targets first
+        ].
+
+    ^ source
 ]
 
 { #category : 'importing' }
@@ -173,16 +239,33 @@ FMMessagePackModelImporter >> restoreRelations [
 ]
 
 { #category : 'importing' }
+FMMessagePackModelImporter >> sourceIdFromRelation: relationData [
+
+    ^ relationData first
+]
+
+{ #category : 'importing' }
 FMMessagePackModelImporter >> targetForRelation: relationData [
 
-    (relationData includesKey: 'targetName') ifTrue: [
-        ^ self metamodel
-            elementNamed: (relationData at: 'targetName')
+    | targetReference |
+
+    targetReference := self
+        targetReferenceFromRelation: relationData.
+
+    targetReference isInteger ifTrue: [
+        ^ self
+            entityAt: targetReference
+            ifAbsent: [
+                self error: 'Target entity not found'
+            ]
     ].
 
-    ^ self
-        entityAt: (relationData at: 'target')
-        ifAbsent: [
-            self error: 'Target entity not found'
-        ]
+    ^ self metamodel
+        elementNamed: targetReference
+]
+
+{ #category : 'importing' }
+FMMessagePackModelImporter >> targetReferenceFromRelation: relationData [
+
+    ^ relationData third
 ]
