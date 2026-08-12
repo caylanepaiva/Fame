@@ -39,24 +39,17 @@ FMMessagePackModelImporter >> entityTypeFrom: entityData [
 { #category : 'importing' }
 FMMessagePackModelImporter >> groupedRelations [
 
-    | groupedRelations key |
+	| groupedRelations key |
+	groupedRelations := Dictionary new.
 
-    groupedRelations := Dictionary new.
+	(groupedRelations at: key ifAbsentPut: [ OrderedCollection new ])
+		addAll: ((document at: 'relations') collect: [ :relationData |
+					 key := {
+						        (self sourceIdFromRelation: relationData).
+						        (self propertyNameFromRelation: relationData) }.
+					 relationData ]).
 
-    (document at: 'relations') do: [ :relationData |
-
-        key := {
-            relationData at: 'source'.
-            relationData at: 'property'
-        }.
-
-        (groupedRelations
-            at: key
-            ifAbsentPut: [ OrderedCollection new ])
-                add: relationData
-    ].
-
-    ^ groupedRelations
+	^ groupedRelations
 ]
 
 { #category : 'importing' }
