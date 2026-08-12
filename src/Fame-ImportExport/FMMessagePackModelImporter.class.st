@@ -10,11 +10,42 @@ Class {
 }
 
 { #category : 'importing' }
+FMMessagePackModelImporter >> groupedRelations [
+
+    | groupedRelations key |
+
+    groupedRelations := Dictionary new.
+
+    (document at: 'relations') do: [ :relationData |
+
+        key := {
+            relationData at: 'source'.
+            relationData at: 'property'
+        }.
+
+        (groupedRelations
+            at: key
+            ifAbsentPut: [ OrderedCollection new ])
+                add: relationData
+    ].
+
+    ^ groupedRelations
+]
+
+{ #category : 'importing' }
 FMMessagePackModelImporter >> importFromFile: aFileReference [
+
+    ^ aFileReference binaryReadStreamDo: [ :stream |
+        self importFromStream: stream
+    ]
+]
+
+{ #category : 'parsing' }
+FMMessagePackModelImporter >> importFromStream: aStream [
 
     self beginDocument.
 
-    self readDocumentFromFile: aFileReference.
+    self readDocumentFromStream: aStream.
 
     self restoreEntities.
 
@@ -27,14 +58,18 @@ FMMessagePackModelImporter >> importFromFile: aFileReference [
 
 { #category : 'importing' }
 FMMessagePackModelImporter >> readDocumentFromFile: aFileReference [
-| bytes |
 
-bytes := aFileReference binaryReadStreamDo: [ :stream | stream contents ].
+    ^ aFileReference binaryReadStreamDo: [ :stream |
+        self readDocumentFromStream: stream
+    ]
+]
 
-document := MpMessagePack unpack: bytes.
+{ #category : 'importing' }
+FMMessagePackModelImporter >> readDocumentFromStream: aStream [
 
-^ document 
+    document := MpMessagePack unpack: aStream contents.
 
+    ^ document
 ]
 
 { #category : 'importing' }
@@ -132,24 +167,7 @@ FMMessagePackModelImporter >> restoreRelationGroup: relationGroup [
 { #category : 'importing' }
 FMMessagePackModelImporter >> restoreRelations [
 
-    | groupedRelations key |
-
-    groupedRelations := Dictionary new.
-
-    (document at: 'relations') do: [ :relationData |
-
-        key := {
-            relationData at: 'source'.
-            relationData at: 'property'
-        }.
-
-        (groupedRelations
-            at: key
-            ifAbsentPut: [ OrderedCollection new ])
-                add: relationData
-    ].
-
-    groupedRelations valuesDo: [ :relationGroup |
+    self groupedRelations valuesDo: [ :relationGroup |
         self restoreRelationGroup: relationGroup
     ]
 ]

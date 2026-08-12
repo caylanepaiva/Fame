@@ -146,25 +146,25 @@ Experiments >> implementationName: aString [
 { #category : 'setup' }
 Experiments >> importModel [
 
-	| model |
+    | model |
 
-	importSelector = #importFromFuelStream:
-		ifTrue: [
-			input binaryReadStreamDo: [ :stream |
-				model := FamixJavaModel
-					perform: importSelector
-					with: stream
-			]
-		]
-		ifFalse: [
-			input readStreamDo: [ :stream |
-				model := FamixJavaModel new
-					perform: importSelector
-					with: stream
-			]
-		].
+    self isBinaryImport
+        ifTrue: [
+            input binaryReadStreamDo: [ :stream |
+                model := FamixJavaModel
+                    perform: importSelector
+                    with: stream
+            ]
+        ]
+        ifFalse: [
+            input readStreamDo: [ :stream |
+                model := FamixJavaModel new
+                    perform: importSelector
+                    with: stream
+            ]
+        ].
 
-	^ model
+    ^ model
 ]
 
 { #category : 'accessing' }
@@ -180,6 +180,15 @@ Experiments >> initialize [
 	results := OrderedCollection new.
 	importSelector := #importFromJSONSeparetedStream:.
 	implementationName := 'separated-current'
+]
+
+{ #category : 'testing' }
+Experiments >> isBinaryImport [
+
+    ^ {
+        #importFromFuelStream:.
+        #importFromMessagePackStream:
+    } includes: importSelector
 ]
 
 { #category : 'accessing' }
